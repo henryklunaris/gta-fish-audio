@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Neon Bay</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0b2e; font-family: Inter, sans-serif; color: #fff; }
+  canvas { display: block; }
+  #logo { position: fixed; top: 18px; left: 24px; font-family: 'Bebas Neue', sans-serif; font-size: 44px; letter-spacing: 2px;
+    background: linear-gradient(90deg, #ff4fd8, #ffb347); -webkit-background-clip: text; color: transparent; text-shadow: 0 0 24px rgba(255,79,216,.35); }
+  #help { position: fixed; top: 22px; right: 24px; font-size: 13px; line-height: 1.7; text-align: right; opacity: .85;
+    background: rgba(0,0,0,.35); padding: 10px 14px; border-radius: 10px; }
+  #help b { color: #ffd400; }
+  #model { position: fixed; bottom: 22px; right: 24px; font-family: 'Bebas Neue'; font-size: 22px; letter-spacing: 1px;
+    background: rgba(0,0,0,.5); padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.2); }
+  #model span { color: #ffd400; }
+  #prompt { position: fixed; bottom: 175px; left: 50%; transform: translateX(-50%); font-size: 18px; font-weight: 700;
+    background: rgba(0,0,0,.6); padding: 10px 18px; border-radius: 8px; display: none; }
+  #prompt b { color: #ffd400; }
+  #sub { position: fixed; bottom: 60px; left: 50%; transform: translateX(-50%); width: min(900px, 90vw); text-align: center;
+    font-size: 24px; font-weight: 700; text-shadow: 0 2px 6px #000, 0 0 2px #000; line-height: 1.35; }
+  #sub .who { color: #ffd400; }
+  #sub .dir { color: #ff8be6; font-style: italic; font-weight: 500; font-size: 18px; }
+  #sub .me { color: #9fe7ff; }
+  #ask { position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); width: min(560px, 85vw); display: none;
+    font-size: 18px; padding: 12px 16px; border-radius: 10px; border: 2px solid #ffd400; background: rgba(0,0,0,.75); color: #fff; outline: none; }
+  .tag { position: fixed; transform: translate(-50%, -100%); font-family: 'Bebas Neue'; font-size: 20px; letter-spacing: 1px;
+    text-shadow: 0 2px 4px #000; pointer-events: none; white-space: nowrap; }
+  .tag .st { display: block; font-family: Inter; font-size: 12px; color: #ffd400; text-align: center; }
+  #load { position: fixed; inset: 0; display: grid; place-items: center; font-family: 'Bebas Neue'; font-size: 40px; background: #1a0b2e; }
+</style>
+</head>
+<body>
+<div id="load">Loading Neon Bay...</div>
+<div id="logo">NEON BAY</div>
+<div id="help"><b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>C</b> walk &nbsp; <b>drag</b> look<br><b>Hold T</b> talk with voice &nbsp; <b>Enter</b> type<br><b>M</b> swap voice model &nbsp; <b>B</b> swap ears &nbsp; <b>H</b> hands-free &nbsp; <b>L</b> full/streamed lines<br><b>R</b> wipe street memory<br>voices by <a href="https://fish.audio/invite/?fpr=henryk" target="_blank" style="color:#ffd400">Fish Audio Drama 3</a></div>
+<div id="model">VOICE: <span id="modelName">DRAMA 3</span> &nbsp; EARS: <span id="earsName">BROWSER</span> &nbsp; HANDS-FREE: <span id="hfName">OFF</span> &nbsp; LINES: <span id="lineName">FULL</span></div>
+<div id="prompt"></div>
+<div id="sub"></div>
+<input id="ask" placeholder="Say something..." autocomplete="off">
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+// ---------- renderer, scene, sunset ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = .95;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xb85a8c, 30, 140);
+const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 400);
+
+// gradient sky dome
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, fog: false,
+  uniforms: { top: { value: new THREE.Color(0x2a1458) }, mid: { value: new THREE.Color(0xff5fa2) }, bot: { value: new THREE.Color(0xffb35c) } },
+  vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }`,
+  fragmentShader: `uniform vec3 top, mid, bot; varying vec3 vP;
+    void main(){ float h = vP.y; vec3 c = h > 0.08 ? mix(mid, top, smoothstep(0.08, 0.6, h)) : mix(bot, mid, smoothstep(-0.05, 0.08, h)); gl_FragColor = vec4(c,1.); }`
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(300, 32, 16), skyMat));
+// sun disc
+const sun = new THREE.Mesh(new THREE.CircleGeometry(18, 48), new THREE.MeshBasicMaterial({ color: 0xffd27a, fog: false }));
+sun.position.set(0, 22, -280); scene.add(sun);
+
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), .04).texture;
+scene.environmentIntensity = .45;
+scene.add(new THREE.HemisphereLight(0xff9ad5, 0x5a3a80, 1.4));
+const sunLight = new THREE.DirectionalLight(0xffb070, 2.2);
+sunLight.position.set(-30, 25, -40);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.set(2048, 2048);
+Object.assign(sunLight.shadow.camera, { left: -30, right: 30, top: 30, bottom: -30, near: 1, far: 150 });
+scene.add(sunLight, sunLight.target);
+
+// ---------- street ----------
+const STREET_LEN = 140;
+const mk = (geo, color, opts = {}) => { const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: .85, ...opts })); m.receiveShadow = true; return m; };
+const road = mk(new THREE.PlaneGeometry(10, STREET_LEN), 0x4a4458, { roughness: .6 }); road.rotation.x = -Math.PI / 2; scene.add(road);
+for (const side of [-1, 1]) {
+  const walk = mk(new THREE.BoxGeometry(5, .2, STREET_LEN), 0x9c8fa3); walk.position.set(side * 7.5, .1, 0); scene.add(walk);
+  const grass = mk(new THREE.PlaneGeometry(60, STREET_LEN), 0x3c2a4f); grass.rotation.x = -Math.PI / 2; grass.position.set(side * 40, -.01, 0); scene.add(grass);
+}
+for (let z = -STREET_LEN / 2; z < STREET_LEN / 2; z += 6) {
+  const dash = mk(new THREE.PlaneGeometry(.25, 3), 0xffe08a, { emissive: 0x554411 }); dash.rotation.x = -Math.PI / 2; dash.position.set(0, .01, z); scene.add(dash);
+}
+
+// neon signs
+function neonSign(text, color, x, y, z, rotY) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 128; const g = c.getContext('2d');
+  g.font = 'bold 84px "Bebas Neue", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = color; g.shadowBlur = 24; g.fillStyle = color; g.fillText(text, 256, 68); g.fillText(text, 256, 68);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), new THREE.MeshBasicMaterial({ map: t, transparent: true, toneMapped: false }));
+  m.position.set(x, y, z); m.rotation.y = rotY; scene.add(m);
+}
+document.fonts.load('84px "Bebas Neue"').finally(() => {
+  neonSign('PINK FLAMINGO', '#ff4fd8', 9.9, 5, -36, -Math.PI / 2);
+  neonSign('PAWN & LOANS', '#ffd400', 9.9, 5, -12, -Math.PI / 2);
+  neonSign('POLICE', '#4fb4ff', -9.9, 5, -24, Math.PI / 2);
+  neonSign('LIQUOR 24/7', '#5dff9a', -9.9, 5, -48, Math.PI / 2);
+  neonSign('MOTEL', '#ff6b4f', -9.9, 6, 4, Math.PI / 2);
+});
+
+// ---------- characters ----------
+const loader = new GLTFLoader();
+const cache = {};
+const loadGLB = f => cache[f] ??= loader.loadAsync('/assets/' + f);
+
+// ---------- street props (Quaternius CC0 models via Poly Pizza, exported from Blender) ----------
+async function prop(file, x, z, rotY = 0, opts = {}) {
+  const g = (await loadGLB('props/' + file)).scene.clone(true);
+  g.traverse(o => {
+    if (!o.isMesh) return;
+    o.castShadow = o.receiveShadow = true;
+    if (opts.tint && /^(White|LightBlue)/.test(o.material.name)) { o.material = o.material.clone(); o.material.color.set(opts.tint); }
+  });
+  if (opts.scale) g.scale.setScalar(opts.scale);
+  g.position.set(x, opts.y ?? 0, z); g.rotation.y = rotY; scene.add(g);
+  return g;
+}
+const bulbMat = new THREE.MeshBasicMaterial({ color: 0xffe2a8, toneMapped: false });
+const jobs = [];
+for (let z = -66; z < 66; z += 11) {
+  jobs.push(prop('palm.glb', 5.8, z + 3, Math.random() * 6.3, { scale: 1 + Math.random() * .25, y: .2 }));
+  if (![-24, -48].some(nz => Math.abs(z - 2 - nz) < 4)) jobs.push(prop('palm.glb', -5.8, z - 2, Math.random() * 6.3, { scale: 1 + Math.random() * .25, y: .2 })); // keep trees off the left-side NPCs
+}
+for (let z = -60; z < 66; z += 22) for (const side of [-1, 1]) {
+  jobs.push(prop('streetlight.glb', side * 5.3, z, -side * Math.PI / 2, { y: .2 }));
+  const bulb = new THREE.Mesh(new THREE.BoxGeometry(.5, .12, .3), bulbMat); bulb.position.set(side * 3.75, 5.05, z); scene.add(bulb);
+}
+jobs.push(
+  prop('sportscar.glb', 3.3, -6, 0, { tint: 0xff3f9a }),
+  prop('policecar.glb', -3.3, -20, Math.PI),
+  prop('car.glb', 3.3, -30, 0, { tint: 0x2fd2c9 }),
+  prop('taxi.glb', -3.3, -42, Math.PI),
+  prop('sportscar.glb', 3.3, 14, 0, { tint: 0xffb02e }),
+  prop('car.glb', -3.3, 6, Math.PI, { tint: 0xb59cff }),
+  prop('trashcan.glb', 8.6, -14, -Math.PI / 2, { y: .2 }), prop('trashcan.glb', -8.6, -46, Math.PI / 2, { y: .2 }),
+  prop('trashcan.glb', 8.6, -38.5, -Math.PI / 2, { y: .2 }),
+);
+
+// ---------- buildings (Kenney CC0 city kit via Poly Pizza), tinted pastel with glowing windows ----------
+const pastel = [0xff9ec7, 0x7fd6d0, 0xffc58f, 0xb59cff, 0xfff1c9, 0x8fc9ff, 0xff8a7a];
+const winMat = new THREE.MeshStandardMaterial({ color: 0x2a2440, emissive: 0xffd9a0, emissiveIntensity: .7, roughness: .3 });
+const winMatCool = winMat.clone(); winMatCool.emissive.set(0xa8e8ff);
+async function buildStreet() {
+  const kinds = await Promise.all(['b1', 'b2', 'b3', 'b4', 'b5', 'b6'].map(n => loadGLB(`buildings/${n}.glb`)));
+  for (const side of [-1, 1]) {
+    let z = -STREET_LEN / 2 - 4;
+    while (z < STREET_LEN / 2) {
+      const g = kinds[Math.floor(Math.random() * kinds.length)].scene.clone(true);
+      const wall = new THREE.MeshStandardMaterial({ color: pastel[Math.floor(Math.random() * pastel.length)], roughness: .9 });
+      const win = Math.random() < .5 ? winMat : winMatCool;
+      g.traverse(o => {
+        if (!o.isMesh) return;
+        o.castShadow = o.receiveShadow = true;
+        o.material = [].concat(o.material).map(m =>
+          /^_defaultMat/.test(m.name) ? wall : /^window/.test(m.name) ? win : Object.assign(m.clone(), { roughness: .9, metalness: 0 }));
+        if (o.material.length === 1) o.material = o.material[0];
+      });
+      g.rotation.y = -side * Math.PI / 2; // front door faces the street
+      g.scale.setScalar(.8 + Math.random() * .35);
+      scene.add(g); g.updateMatrixWorld(true);
+      const box = new THREE.Box3().setFromObject(g);
+      g.position.x += side > 0 ? 10 - box.min.x : -10 - box.max.x;
+      g.position.z += z - box.min.z;
+      z += box.max.z - box.min.z + .6;
+    }
+  }
+}
+jobs.push(buildStreet());
+await Promise.all(jobs);
+const ADDITIVE = ['agree', 'headShake', 'sad_pose', 'sneak_pose'];
+
+// soften the low-poly look: blend lighting across faces, keep sharp edges (see SMOOTH_ANGLE) (shoe soles, collars)
+const SMOOTH = new URLSearchParams(location.search).get('smooth') !== '0'; // ?smooth=0 for the original flat look
+const SMOOTH_ANGLE = +new URLSearchParams(location.search).get("angle") || 60; // ?angle=45 keeps more detail, 80 is softest
+const smoothCache = new Map();
+function smoothGeo(g) {
+  if (!smoothCache.has(g)) {
+    // the helper matches vertices to 2 decimals and these meshes are tiny in bind space, so scale up while smoothing
+    const big = g.clone(); big.scale(1000, 1000, 1000);
+    const out = toCreasedNormals(big, THREE.MathUtils.degToRad(SMOOTH_ANGLE)); out.scale(.001, .001, .001);
+    smoothCache.set(g, out);
+  }
+  return smoothCache.get(g);
+}
+
+async function makeChar(file, recolor = {}, shorts = null) {
+  const gltf = await loadGLB(file);
+  const root = SkeletonUtils.clone(gltf.scene);
+  root.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true; o.frustumCulled = false;
+      if (SMOOTH) o.geometry = smoothGeo(o.geometry);
+      for (const m of [].concat(o.material)) { m.roughness = 1; m.metalness = 0; m.envMapIntensity = .25; } // matte clothes
+      o.material = [].concat(o.material).map(m => recolor[m.name] ? Object.assign(m.clone(), { color: new THREE.Color(recolor[m.name]) }) : m); // outfit colours from npcs.json
+      if (shorts) o.material = o.material.map(m => m.name === shorts.material ? cutToShorts(m, shorts) : m);
+      if (o.material.length === 1) o.material = o.material[0];
+    }
+  });
+  // normalise height to ~1.8m
+  root.updateMatrixWorld(true);
+  const h = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()).y || 1.8;
+  root.scale.multiplyScalar(1.8 / h);
+  const wrap = new THREE.Group(); wrap.add(root); scene.add(wrap);
+  const mixer = new THREE.AnimationMixer(root);
+  const actions = {};
+  for (const clip of gltf.animations) {
+    let c = clip;
+    if (ADDITIVE.includes(clip.name)) { c = clip.clone(); THREE.AnimationUtils.makeClipAdditive(c); }
+    const a = mixer.clipAction(c);
+    if (ADDITIVE.includes(clip.name)) a.blendMode = THREE.AdditiveAnimationBlendMode;
+    actions[clip.name.split('|').pop().replace(/^Robot_/, '').toLowerCase()] = a;
+  }
+  let head = null; root.traverse(o => { if (o.isBone && o.name === 'Head' && !head) head = o; });
+  return { wrap, mixer, actions, current: null, head };
+}
+
+// trousers -> shorts: anything below the hem (bind-pose height) is painted skin colour
+function cutToShorts(mat, { hem, color, skin }) {
+  const m = mat.clone();
+  m.color.set(color);
+  const uSkin = { value: new THREE.Color(skin) }, uHem = { value: hem };
+  m.onBeforeCompile = sh => {
+    sh.uniforms.uSkin = uSkin; sh.uniforms.uHem = uHem;
+    sh.vertexShader = 'varying float vBindZ;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvBindZ = position.z;');
+    sh.fragmentShader = 'uniform vec3 uSkin; uniform float uHem; varying float vBindZ;\n' + sh.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\nif (vBindZ < uHem) diffuseColor.rgb = uSkin;');
+  };
+  m.customProgramCacheKey = () => 'shorts' + hem;
+  return m;
+}
+
+function playLoop(ch, name) {
+  const a = ch.actions[name]; if (!a || ch.current === a) return;
+  a.reset().fadeIn(.25).play(); if (ch.current) ch.current.fadeOut(.25); ch.current = a;
+}
+
+// one-shot gesture on top of the idle loop
+function gesture(ch, name) {
+  const a = ch.actions[name]; if (!a) return;
+  if (a.blendMode === THREE.AdditiveAnimationBlendMode) {
+    a.reset().setEffectiveWeight(1).fadeIn(.2).play();
+    setTimeout(() => a.fadeOut(.6), 2500);
+    return;
+  }
+  const back = ch.current;
+  a.reset().setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.fadeIn(.2).play();
+  if (back) back.fadeOut(.2);
+  const done = e => { if (e.action !== a) return; ch.mixer.removeEventListener('finished', done); a.fadeOut(.3); if (back) back.reset().fadeIn(.3).play(); };
+  ch.mixer.addEventListener('finished', done);
+}
+
+const MOOD_ANIM = {
+  angry: ['punch_right', 'punch', 'no'], happy: ['thumbsup', 'wave', 'yes'], laugh: ['dance', 'yes', 'interact'],
+  sad: ['hitrecieve', 'no', 'sitting'], scared: ['hitrecieve_2', 'jump'], neutral: ['interact', 'wave'],
+};
+function moodGesture(ch, mood) {
+  const name = (MOOD_ANIM[mood] || MOOD_ANIM.neutral).find(n => ch.actions[n]);
+  if (name) gesture(ch, name);
+}
+
+let heading = Math.PI, camYaw = 0;
+// ---------- load everything ----------
+const npcData = await (await fetch('/api/npcs')).json();
+const PLAYER_FACING = 0; // extra turn if the player model faces away from +z
+const player = await makeChar('chars_raw/player.glb');
+player.wrap.position.set(0, 0, 4);
+const spawnAt = new URLSearchParams(location.search).get('at');
+const TALK_TEST = new URLSearchParams(location.search).has('talktest'); // fakes a voice so head motion can be checked
+const CAM_DIST = +new URLSearchParams(location.search).get('dist') || 6; // ?dist=2.5 for close-ups
+playLoop(player, 'idle');
+
+const npcs = [];
+for (const d of npcData) {
+  const ch = await makeChar(d.model, d.recolor, d.shorts);
+  ch.wrap.position.set(d.pos[0], .2, d.pos[1]);
+  ch.wrap.rotation.y = d.pos[0] > 0 ? -Math.PI / 2 : Math.PI / 2;
+  ch.baseRot = ch.wrap.rotation.y;
+  playLoop(ch, ['idle', 'sambadance'].find(n => ch.actions[n]));
+  const tag = document.createElement('div'); tag.className = 'tag'; tag.innerHTML = `${d.name}<span class="st"></span>`; document.body.appendChild(tag);
+  npcs.push({ ...d, ch, tag, history: [], busy: false });
+}
+player.wrap.rotation.y = heading + PLAYER_FACING; // face down the street at spawn
+const sp = npcs.find(n => n.id === spawnAt);
+if (sp) { player.wrap.position.set(sp.pos[0] * .8, 0, sp.pos[1] + 1.6); const a = Math.atan2(sp.pos[0] * .3, -1.6); heading = a; camYaw = a + Math.PI + (sp.pos[0] > 0 ? -.6 : .6); player.wrap.rotation.y = a + PLAYER_FACING; }
+document.getElementById('load').remove();
+
+// ---------- post fx ----------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .55, .5, .82));
+composer.addPass(new OutputPass());
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- input ----------
+const keys = {};
+const ask = document.getElementById('ask');
+let camPitch = .25, dragging = false;
+addEventListener('keydown', e => {
+  if (document.activeElement === ask) return;
+  keys[e.code] = true;
+  if (e.code === 'KeyT' && !e.repeat) startListening();
+  if (e.code === 'Enter' && nearest) { e.preventDefault(); ask.style.display = 'block'; ask.focus(); }
+  if (e.code === 'KeyM') toggleModel();
+  if (e.code === 'KeyL') toggleLines();
+  if (e.code === 'KeyB') toggleEars();
+  if (e.code === 'KeyH') toggleHandsFree();
+  if (e.code === 'KeyR') fetch('/api/reset', { method: 'POST' }).then(() => showSub('<span class="me">Street memory wiped, everyone forgot you</span>'));
+});
+addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'KeyT') stopListening(); });
+renderer.domElement.addEventListener('pointerdown', () => dragging = true);
+addEventListener('pointerup', () => dragging = false);
+addEventListener('pointermove', e => { if (dragging) { camYaw -= e.movementX * .005; camPitch = THREE.MathUtils.clamp(camPitch + e.movementY * .003, .05, .9); } });
+ask.addEventListener('keydown', e => {
+  e.stopPropagation();
+  if (e.code === 'Enter') { const t = ask.value.trim(); ask.value = ''; ask.style.display = 'none'; ask.blur(); if (t && nearest) say(nearest, t); }
+  if (e.code === 'Escape') { ask.style.display = 'none'; ask.blur(); }
+});
+
+// voice model toggle (Drama 3 vs S2.1 Pro free)
+let fishModel = 'drama-3';
+// full = Fish gets the whole line at once (emotions hold), streamed = word by word (faster)
+let streamText = false;
+function toggleLines() { streamText = !streamText; document.getElementById('lineName').textContent = streamText ? 'STREAMED' : 'FULL'; }
+function toggleModel() {
+  fishModel = fishModel === 'drama-3' ? 's2.1-pro-free' : 'drama-3';
+  document.getElementById('modelName').textContent = fishModel === 'drama-3' ? 'DRAMA 3' : 'S2.1 PRO';
+}
+
+// push to talk. Ears = browser speech recognition (instant, Chrome) or Fish ASR (record, then transcribe)
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let ears = 'fish';
+const earsEl = () => document.getElementById('earsName');
+earsEl().textContent = ears.toUpperCase();
+function toggleEars() { ears = ears === 'browser' ? 'fish' : (SR ? 'browser' : 'fish'); earsEl().textContent = ears.toUpperCase(); }
+let rec = null, heard = '', recErr = '';
+function startListening() { return ears === 'browser' ? startBrowserListening() : startFishListening(); }
+function stopListening() { return ears === 'browser' ? stopBrowserListening() : stopFishListening(); }
+function startBrowserListening() {
+  if (!nearest || nearest.busy || rec) return;
+  const target = nearest; heard = ''; recErr = '';
+  rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.continuous = true;
+  rec.onresult = e => { heard = [...e.results].map(r => r[0].transcript).join(' '); showSub(`<span class="me">YOU: ${esc(heard)}</span>`); };
+  rec.onerror = e => { recErr = e.error; };
+  rec.onend = () => {
+    rec = null;
+    const t = heard.trim();
+    if (t) return say(target, t);
+    showErr(recErr ? `Browser speech error: ${recErr}. Press B to use Fish ears` : "Didn't catch that, hold T while you talk");
+  };
+  try { rec.start(); } catch (err) { rec = null; showErr(err.message); return; }
+  showSub('<span class="me">● Listening... let go of T to send</span>');
+}
+function stopBrowserListening() { if (rec) { const r = rec; setTimeout(() => r.stop(), 300); } }
+
+// push to talk: record mic while T is held, Fish ASR transcribes it on the server
+let micStream = null, recorder = null, chunks = [], listenTarget = null;
+const showErr = msg => showSub(`<span class="dir">(${esc(String(msg).slice(0, 160))})</span>`);
+async function startFishListening() {
+  if (!nearest || nearest.busy || recorder) return;
+  listenTarget = nearest;
+  try { micStream ??= await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (err) { showErr('Mic blocked: ' + err.message); return; }
+  if (!keys.KeyT) { showSub('<span class="me">Mic ready, hold T again to talk</span>'); return; }
+  chunks = [];
+  const r = recorder = new MediaRecorder(micStream);
+  r.ondataavailable = e => e.data.size && chunks.push(e.data);
+  r.onstop = () => {
+    recorder = null;
+    const blob = new Blob(chunks, { type: r.mimeType });
+    if (blob.size < 1500) { showErr('Too short, hold T while you talk'); return; }
+    sendClip(blob, listenTarget);
+  };
+  r.start(250);
+  showSub('<span class="me">● Listening... let go of T to send</span>');
+}
+let hearing = false;
+async function sendClip(blob, target) {
+  showSub('<span class="me">Hearing you...</span>');
+  hearing = true;
+  try {
+    const res = await fetch('/api/hear', { method: 'POST', body: blob, headers: { 'Content-Type': blob.type || 'audio/webm' } });
+    if (!res.ok) throw new Error(await res.text());
+    const { text } = await res.json();
+    if (!text.trim()) { showErr("Didn't catch that, try again"); return; }
+    say(target, text.trim());
+  } catch (err) { console.error(err); showErr(err.message); }
+  finally { hearing = false; }
+}
+function stopFishListening() { if (recorder && recorder.state === 'recording') { const r = recorder; setTimeout(() => r.stop(), 200); } }
+
+// ---------- hands-free: H toggles, mic opens near an NPC, sends after you go quiet ----------
+const qs = new URLSearchParams(location.search);
+const HF_NEAR = +qs.get('near') || 3; // metres
+const HF_QUIET = +qs.get('quiet') || 700; // ms of silence that ends your turn
+const HF_LEVEL = +qs.get('vad') || 0.02; // mic loudness that counts as speech
+let handsFree = false, hf = null, nearestDist = 99, quietUntil = 0;
+const hfEl = () => document.getElementById('hfName');
+async function toggleHandsFree() {
+  handsFree = !handsFree;
+  hfEl().textContent = handsFree ? 'ON' : 'OFF';
+  if (!handsFree) return hfStop(true);
+  try { micStream ??= await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (err) { handsFree = false; hfEl().textContent = 'OFF'; showErr('Mic blocked: ' + err.message); return; }
+  hfMeter ??= (() => { const c = new AudioContext(), a = c.createAnalyser(); a.fftSize = 1024; c.createMediaStreamSource(micStream).connect(a); return a; })();
+}
+let hfMeter = null;
+const hfBuf = new Float32Array(1024);
+function micLevel() {
+  hfMeter.getFloatTimeDomainData(hfBuf);
+  let sum = 0; for (const v of hfBuf) sum += v * v;
+  return Math.sqrt(sum / hfBuf.length);
+}
+function hfStop(discard) {
+  if (!hf) return;
+  const h = hf; hf = null;
+  h.discard = discard;
+  if (h.rec.state === 'recording') h.rec.stop();
+}
+function hfStart(target) {
+  const h = hf = { target, chunks: [], speech: 0, lastLoud: 0, t0: performance.now(), discard: false };
+  h.rec = new MediaRecorder(micStream);
+  h.rec.ondataavailable = e => e.data.size && h.chunks.push(e.data);
+  h.rec.onstop = () => { if (!h.discard) sendClip(new Blob(h.chunks, { type: h.rec.mimeType }), h.target); };
+  h.rec.start(250);
+}
+function handsFreeTick() {
+  if (!handsFree || !hfMeter) return;
+  const now = performance.now();
+  const npcBusy = hearing || npcs.some(n => n.busy || n.speaking);
+  if (npcBusy) quietUntil = now + 500; // don't hear the NPC's own voice, plus a short tail after
+  const ready = nearest && nearestDist < HF_NEAR && !npcBusy && now > quietUntil && !recorder && !keys.KeyT;
+  if (!ready) { if (hf) hfStop(true); return; }
+  if (hf && hf.target !== nearest) hfStop(true);
+  if (!hf) hfStart(nearest);
+  const loud = micLevel() > HF_LEVEL;
+  if (loud) { hf.speech += 16; hf.lastLoud = now; }
+  if (hf.speech > 250 && now - hf.lastLoud > HF_QUIET) { quietUntil = now + 300; hfStop(false); return; } // you finished talking
+  if (!hf.speech && now - hf.t0 > 10000) hfStop(true); // nothing said, restart so clips stay small
+}
+setInterval(handsFreeTick, 16);
+
+// ---------- talking ----------
+const sub = document.getElementById('sub');
+const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+function showSub(html) { sub.innerHTML = html; }
+function fmtLine(name, line) {
+  const body = esc(line).replace(/\[([^\]]+)\]/g, '<span class="dir">[$1]</span>').replace(/&lt;\/?(whisper|emphasis|stress|forceful|soft|fast|slow)&gt;/g, '');
+  return `<span class="who">${esc(name.toUpperCase())}:</span> ${body}`;
+}
+let audio = null;
+async function say(npc, text) {
+  npc.busy = true;
+  npc.tag.querySelector('.st').textContent = 'thinking...';
+  showSub(`<span class="me">YOU: ${esc(text)}</span>`);
+  const t0 = performance.now();
+  try {
+    const r = await fetch('/api/talk', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ npc: npc.id, text, fish_model: fishModel, stream_text: streamText }) });
+    if (!r.ok) throw new Error(await r.text());
+    const { id, model } = await r.json();
+    // audio streams in while the LLM is still writing, the full line arrives separately for subtitles
+    if (audio) audio.pause();
+    audio = new Audio(`/api/speak/${id}`);
+    listenTo(audio);
+    let line = null, started = false, firstAudio = '';
+    const show = () => {
+      if (!line || !started) return;
+      showSub(fmtLine(npc.name, line.line));
+    };
+    audio.onplaying = () => {
+      if (started) return;
+      started = true; firstAudio = ((performance.now() - t0) / 1000).toFixed(2);
+      npc.speaking = true; npc.tag.querySelector('.st').textContent = ''; show();
+    };
+    audio.onended = () => npc.speaking = false;
+    fetch(`/api/line/${id}`).then(x => x.json()).then(d => {
+      line = d;
+      moodGesture(npc.ch, d.mood); show();
+    });
+    await audio.play();
+  } catch (err) {
+    console.error(err); showErr(err.message);
+    npc.tag.querySelector('.st').textContent = '';
+  } finally { npc.busy = false; }
+}
+
+// rotate the head around the character's own side/up/forward axis, whatever way the rig's head bone points
+const SIDE = new THREE.Vector3(1, 0, 0), UP = new THREE.Vector3(0, 1, 0), FWD = new THREE.Vector3(0, 0, 1);
+const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _ax = new THREE.Vector3();
+function talkAxis(n, axis, angle) {
+  const head = n.ch.head;
+  head.updateWorldMatrix(true, false);
+  n.ch.wrap.getWorldQuaternion(_qa);
+  head.getWorldQuaternion(_qb).invert();
+  _ax.copy(axis).applyQuaternion(_qa).applyQuaternion(_qb).normalize();
+  head.rotateOnAxis(_ax, angle);
+}
+
+// ---------- voice loudness, drives NPC head movement ----------
+let actx = null, analyser = null, voiceLevel = 0;
+const wave = new Uint8Array(512);
+function listenTo(el) {
+  try {
+    actx ??= new AudioContext();
+    if (!analyser) { analyser = actx.createAnalyser(); analyser.fftSize = 512; analyser.connect(actx.destination); }
+    actx.resume();
+    actx.createMediaElementSource(el).connect(analyser);
+  } catch (err) { console.warn('voice analyser off', err); }
+}
+function readVoiceLevel() {
+  if (!analyser) return 0;
+  analyser.getByteTimeDomainData(wave);
+  let sum = 0; for (const v of wave) sum += ((v - 128) / 128) ** 2;
+  return Math.min(1, Math.sqrt(sum / wave.length) * 4);
+}
+
+// ---------- game loop ----------
+const clock = new THREE.Clock();
+const promptEl = document.getElementById('prompt');
+let nearest = null;
+const tmp = new THREE.Vector3();
+
+function tick() {
+  const dt = Math.min(clock.getDelta(), .05);
+  voiceLevel = TALK_TEST ? .5 + .5 * Math.sin(clock.elapsedTime * 8) : readVoiceLevel();
+  const typing = document.activeElement === ask;
+
+  // movement relative to camera
+  let fx = 0, fz = 0;
+  if (!typing) {
+    if (keys.KeyW) fz -= 1; if (keys.KeyS) fz += 1; if (keys.KeyA) fx -= 1; if (keys.KeyD) fx += 1;
+  }
+  const moving = fx || fz;
+  const run = keys.ShiftLeft || keys.ShiftRight;
+  if (moving) {
+    const ang = Math.atan2(fx, fz) + camYaw;
+    const walk = keys.KeyC && !run;
+    const speed = run ? 7.5 : walk ? 1.7 : 4.2; // C walk, W jog, Shift sprint
+    const p = player.wrap.position;
+    p.x = THREE.MathUtils.clamp(p.x + Math.sin(ang) * speed * dt, -9.3, 9.3);
+    p.z = THREE.MathUtils.clamp(p.z + Math.cos(ang) * speed * dt, -66, 66);
+    let diff = ang - heading; diff = Math.atan2(Math.sin(diff), Math.cos(diff)); heading += diff * Math.min(1, dt * 10);
+    player.wrap.rotation.y = heading + PLAYER_FACING;
+    playLoop(player, walk ? 'walk' : 'run');
+    player.current.timeScale = run ? 1.25 : walk ? 1.1 : .85; // match leg speed to ground speed
+  } else playLoop(player, 'idle');
+
+  // follow camera
+  const p = player.wrap.position;
+  p.y = THREE.MathUtils.clamp((Math.abs(p.x) - 4.6) / .5, 0, 1) * .2; // ease up over the kerb so no foot sinks into the pavement
+  const dist = CAM_DIST;
+  camera.position.set(p.x + Math.sin(camYaw) * dist * Math.cos(camPitch), p.y + 1.6 + Math.sin(camPitch) * dist, p.z + Math.cos(camYaw) * dist * Math.cos(camPitch));
+  camera.lookAt(p.x, p.y + 1.5, p.z);
+  sunLight.position.set(p.x - 18, 40, p.z - 22); sunLight.target.position.copy(p);
+
+  // npcs: face player when close, name tags, nearest
+  nearest = null; let best = 3.5;
+  for (const n of npcs) {
+    const np = n.ch.wrap.position;
+    const d = np.distanceTo(p);
+    if (d < 0.9) { tmp.subVectors(p, np).setY(0).normalize(); p.addScaledVector(tmp, .9 - d); }
+    if (d < best) { best = d; nearest = n; }
+    nearestDist = best;
+    const target = d < 6 ? Math.atan2(p.x - np.x, p.z - np.z) : n.ch.baseRot;
+    let diff = target - n.ch.wrap.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    n.ch.wrap.rotation.y += diff * Math.min(1, dt * 4);
+    n.ch.wrap.position.y = .2;
+    tmp.set(np.x, np.y + 2.15, np.z).project(camera);
+    const vis = tmp.z < 1 && d < 25;
+    n.tag.style.display = vis ? 'block' : 'none';
+    if (vis) { n.tag.style.left = (tmp.x * .5 + .5) * innerWidth + 'px'; n.tag.style.top = (-tmp.y * .5 + .5) * innerHeight + 'px'; }
+    n.ch.mixer.update(dt);
+    // head follows the loudness of the voice (no jaw bone on these models), added on top of the animation
+    const lvl = n.speaking || TALK_TEST ? voiceLevel : 0;
+    n.talk = (n.talk || 0) + (lvl - (n.talk || 0)) * Math.min(1, dt * 18);
+    const h = n.ch.head;
+    if (h) {
+      // some clips never key the head bone, so undo last frame's talk motion or it piles up
+      if (n.lastHeadQ && h.quaternion.equals(n.lastHeadQ)) h.quaternion.copy(n.headBase);
+      (n.headBase ??= new THREE.Quaternion()).copy(h.quaternion);
+    }
+    if (h && n.talk > .01) {
+      const t = clock.elapsedTime, k = n.talk * (n.talkScale ?? 1);
+      talkAxis(n, SIDE, .3 * k + Math.sin(t * 2.3) * k * .06); // nod
+      talkAxis(n, UP, Math.sin(t * 1.7) * k * .18);             // look around
+      talkAxis(n, FWD, Math.sin(t * 1.1) * k * .07);            // tilt
+    }
+    if (h) (n.lastHeadQ ??= new THREE.Quaternion()).copy(h.quaternion);
+  }
+  player.mixer.update(dt);
+
+  if (nearest && !typing) { promptEl.style.display = 'block'; promptEl.innerHTML = nearest.busy ? `${esc(nearest.name)} is thinking...` : handsFree ? (hf ? `<span style="color:#ff4d6d">●</span> Listening, just talk to ${esc(nearest.name)}` : hearing ? 'Hearing you...' : nearestDist < HF_NEAR ? `${esc(nearest.name)} is talking...` : `Move closer to talk to ${esc(nearest.name)}`) : `<b>Hold T</b> to talk to ${esc(nearest.name)} &nbsp;·&nbsp; <b>Enter</b> to type`; }
+  else promptEl.style.display = 'none';
+
+  composer.render();
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>
