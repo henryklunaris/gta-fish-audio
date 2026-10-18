@@ -108,6 +108,7 @@ def stream_llm(msgs):
                       json={"model": LLM, "messages": msgs, "max_tokens": 600, "temperature": 0.9, "stream": True,
                             "reasoning": {"enabled": False}, "provider": {"sort": "latency"}})
     r.raise_for_status()
+    r.encoding = "utf-8"  # SSE has no charset header, so requests would guess latin-1 and mangle dashes and accents
     for raw in r.iter_lines(decode_unicode=True):
         if not raw or not raw.startswith("data: "):
             continue
@@ -115,7 +116,7 @@ def stream_llm(msgs):
             break
         c = json.loads(raw[6:])["choices"][0]["delta"].get("content")
         if c:
-            yield c
+            yield re.sub(r"\s*[\u2014\u2013]\s*", ", ", c)  # dashes read badly in subtitles, commas instead
 
 
 def run_job(job, npc, history, text):
