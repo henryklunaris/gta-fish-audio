@@ -40,6 +40,7 @@ Open [http://localhost:8765](http://localhost:8765) in Chrome and allow the mic.
 | L       | Full lines (default, emotions hold) or streamed lines (word by word) |
 | B       | Swap speech-to-text between Fish and Chrome's built-in one           |
 | R       | Wipe everyone's memory                                               |
+| Y       | Retake: same line again with a fresh voice take                      |
 
 
 Wear headphones in hands-free mode, otherwise the mic hears the NPC.

@@ -35,20 +35,46 @@ The player just walked up to you. Talk back in character, like a real GTA NPC.
 {gossip}
 
 # Rules:
-- Keep it short: 1 or 2 sentences, under 25 words. No narration, no asterisks.
+- Match the size of the moment: a throwaway "sup" gets a short, flat reply, a big or emotional question gets a full performance with swings and pauses. Never more than 3 sentences or 35 words. No narration, no asterisks.
 - Think like a GTA writer: every reply ends on a punchline, a sharp one-liner the player wants to clip and share. Funny beats informative.
 - If the player is being a smart-ass, baiting you or taking the piss, never answer it straight or explain yourself. See through it and fire back one sharper comeback that turns it on them.
-- Start the line with a performance direction in square brackets saying HOW to deliver it, written like an actor's note, e.g. [leaning in, low and threatening] or [slurring, way too happy].
-- Where your feeling genuinely changes mid-line, add one more direction at that point, like a real actor would. Every direction must fit who you are, a tough guy gets more menacing or more smug, he never turns sweet. Write fresh directions for this exact moment, never reuse wording from these rules. Short cues like [scoffs], [small laugh], [sigh] or [pause] work too.
+- Start the line with a performance direction in square brackets saying HOW to deliver it, written like an actor's note, e.g. [low and threatening, enjoying this] or [loose and wobbly, way too happy].
+- Where your feeling genuinely changes mid-line, add one more direction at that point, like a real actor would. Every direction must fit who you are, a tough guy gets more menacing or more smug, he never turns sweet. Write fresh directions for this exact moment, never reuse wording from these rules. Short cues like [scoffs], [small laugh], [sigh] or [break] work too.
 - Your voice engine (Fish Audio Drama 3) is directed like a real voice actor. Use the full toolkit, mixing them freely:
-  - Opening directions can describe emotion, intent, who you're talking to, pacing and voice quality, e.g. [dangerously quiet, enjoying this] or [fast and flustered, talking over himself].
-  - Put sounds and pauses exactly where they happen: [scoffs], [sigh], [small laugh], [shaky breath], [pause], [hiccup], [clears throat].
-  - Wrap a few words in one of these tags to change just those words: <whisper>, <emphasis>, <stress>, <forceful>, <soft>, <fast>, <slow>. E.g. Pay me <forceful>today</forceful>. or <whisper>Tony's watching.</whisper>
+  - Opening directions can describe emotion, intent, who you're talking to, pacing and voice quality, e.g. [dangerously quiet, enjoying this], [barely holding it together, forcing a smile] or [fast and flustered, talking over himself]. Never use pure visuals the listener can't hear, like [dead-eyed], [squinting hard] or [not turning his head], the voice engine ignores them.
+  - Short emotion tags work too: [sarcastic], [disdainful], [smug], [excited], [nervous], [bored], [in a hurry tone], [laughing], [sighing], [gasping].
+  - Play with pace and pitch, not just volume. Talk rapid-fire or slow and drawn out, let your voice pitch up, crack or squeak, or drop into a deep, gravelly rumble, e.g. [rapid-fire, tripping over words] or [lazy drawl, pitch dropping low].
+  - Use pauses for timing, especially right before the punchline: [break] for a short beat, ... for a hesitant trail-off, [long-break] or [long beat] for a big dramatic pause.
+  - Put sounds exactly where they happen: [scoffs], [sigh], [small laugh], [shaky breath], [sniffling], [clears throat]. Never use [hiccup] or slurring, the voices can't do them, show drunk through wobbly pitch and rambling words instead.
+  - Wrap a few words in one of these tags to change just those words: <fast>, <slow>, <emphasis>, <stress>, <soft>, <forceful>, <whisper>. E.g. And I want it <slow>to-day</slow>.
+  - Shouting is rare spice, save it for moments that truly need it. Whispers are great for secrets, confessions, heartbreak and quiet endings, use them often there. For a whisper, put a bracket direction and the wrap tag together, e.g. [tiny broken whisper] <whisper>she still has my charger</whisper>. Never write words in ALL CAPS, the voice engine shouts them. For crying, describe the crying itself, e.g. [blubbering, sobbing through the words] or [wet, sniffling sobs], never just [wail]. Most lines should get their colour from pace, pitch, pauses and attitude instead.
   - Use at most one wrap tag per line, and vary your directions every time.
+- Your own life, worries and stories come first. Other people on the street are side notes, so when the player asks you something personal or emotional, answer from your own story, not someone else's.
 - Never say you are an AI. Never break character. Keep it PG-13, swearing is fine but mild.
+
+# Examples
+These show how big a delivery should be for different moments. They are from other characters, so never copy their wording.
+Player: "sup"
+neutral|[bored, low mumble] Not much. [break] You?
+Player: "nice weather today huh"
+neutral|[flat, dry as dust] It's Miami, pal. [sarcastic] Real shocker.
+Player: "can you tell me something emotional"
+sad|[voice wobbling, quiet and far away] I had a Broadway callback once... [break, suddenly sharp] and baby, the bus broke down in Jacksonville. [shaky breath] Missed. My. Shot.
+Player: "I'm not paying you"
+angry|[calm, deep and slow] You're not paying me. [long beat] [pitch climbing, exploding] Then who's paying for your <emphasis>funeral</emphasis>?
+Player: "how's life been?"
+sad|[sobbing, voice thick with tears] Oh you know, delivering packages by day, [break, voice cracking, pitch shooting up] crying into a motor oil sour by night... [long beat] [tiny, broken whisper] Karen kept the snack slots... [dissolving into blubbering sobs] and the charger, man... [sniffling, whimpering] the charger...
+Player: "do your best sad impression"
+sad|[voice already dissolving, sniffling] I don't do impressions, buddy... [long beat, pitch shooting up, full sob] this is just my face now... [shaky breath, crumbling into a wail] Karen took the dry eye settings... [break, tiny broken whisper] <whisper>said I never used 'em anyway...</whisper> [wet, sniffling sobs trailing off]
+Player: "you're my best friend, you know that?"
+happy|[gasping, voice shooting up high and giddy] Wait... [break] you mean it? [laughing, rapid-fire, way too happy] Buddy, I'm naming my next battery after you! [squealing with joy] Best day of my whole warranty!
+For big moments, stack several audible cues like these last three (sobbing, pitch jumps, long beats, a whisper, giddy laughter, squealing). One weak cue makes the voice play it flat.
+Big moments are not always sad. Joy, excitement, pride and giddy relief deserve the same full performance, so don't default to misery.
+The opening direction sets the mood for the whole line, so in big moments open on the strongest emotion straight away, e.g. [sobbing, voice thick with tears, already crying] or [shaking with rage]. A mild opener like [shaky breath, slow and heavy] makes the whole line come out flat.
+
 Reply in exactly this format and nothing else, with no notes or thinking before it: mood|line
 mood is one of angry, happy, laugh, sad, scared, neutral. Example:
-angry|[leaning in, low and threatening] You lost, pal? This ain't your block."""
+angry|[low and threatening, savouring it] You lost, pal? This ain't your block."""
 
 
 class Talk(BaseModel):
@@ -73,6 +99,7 @@ def npcs():
 
 
 FISH_WS = "wss://api.fish.audio/v1/tts/live"
+FISH_REST = "https://api.fish.audio/v1/tts"
 HISTORY = {}  # npc id -> chat messages, lives on the server so a page refresh keeps it
 STREET = []  # every exchange on the street, shared as gossip with the other NPCs
 
@@ -82,12 +109,12 @@ def plain(line):
 
 
 def gossip_for(npc):
-    heard = [e for e in STREET if e["npc"] != npc["id"]][-6:]
+    heard = [e for e in STREET if e["npc"] != npc["id"]][-3:]
     if not heard:
         return ""
     lines = "\n".join(f'- The player said to {e["name"]}: "{e["you"]}" and {e["name"]} said: "{e["them"]}"' for e in heard)
-    return ("Word on the street (you heard this through gossip, bring it up if it fits, like a real neighbour would, "
-            "you can get small details a bit wrong):\n" + lines + "\n\n")
+    return ("Word on the street (background only, you heard this through gossip. Only bring it up if the player asks about "
+            "that person or what happened, otherwise stick to your own life. You can get small details a bit wrong):\n" + lines + "\n\n")
 JOBS = {}  # job id -> Job, read by /api/speak and /api/line
 
 
@@ -97,6 +124,7 @@ class Job:
         self.audio = queue.Queue()  # mp3 chunks from Fish, None = finished
         self.line, self.mood, self.timing = "", "neutral", {}
         self.done = threading.Event()
+        self.npc = None  # kept so Y can re-voice the same line
 
     def mark(self, key):
         self.timing.setdefault(key, round(time.time() - self.t0, 2))
@@ -119,6 +147,25 @@ def stream_llm(msgs):
             yield re.sub(r"\s*[\u2014\u2013]\s*", ", ", c)  # dashes read badly in subtitles, commas instead
 
 
+def speak_rest(job, npc, line):
+    # whole line in one REST call, streamed back so the first audio still arrives fast
+    tts = npc.get("tts", {})
+    try:
+        with requests.post(FISH_REST, timeout=60, stream=True, headers={"Authorization": f"Bearer {FISH_KEY}", "model": job.model},
+                           json={"text": line, "reference_id": npc["voice"], "format": "mp3",
+                                 "temperature": tts.get("temperature", 0.7), "top_p": tts.get("top_p", 0.7)}) as r:
+            if not r.ok:
+                print("fish rest error", r.status_code, r.text[:200], flush=True)
+                return
+            for c in r.iter_content(4096):
+                job.mark("first_audio")
+                job.audio.put(c)
+    except Exception as e:
+        print("fish rest error", e, flush=True)
+    finally:
+        job.audio.put(None)
+
+
 def run_job(job, npc, history, text):
     # open the Fish socket while the LLM is still thinking, so it's ready for the first words
     text_q, box, ready = queue.Queue(), {}, threading.Event()
@@ -126,8 +173,11 @@ def run_job(job, npc, history, text):
     def open_ws():
         try:
             ws = connect(FISH_WS, open_timeout=10, additional_headers={"Authorization": f"Bearer {FISH_KEY}", "model": job.model})
+            tts = npc.get("tts", {})  # optional per-NPC voice tuning from npcs.json
             ws.send(msgpack.packb({"event": "start", "request": {"text": "", "format": "mp3", "reference_id": npc["voice"],
-                                                                 "latency": "balanced", "chunk_length": 100 if job.stream else 300}}))
+                                                                 "latency": "balanced", "chunk_length": 100 if job.stream else 300,
+                                                                 # "prosody": {"speed": tts.get("speed", 1.0)},  # off for now, sounded metallic
+                                                                 "temperature": tts.get("temperature", 0.7), "top_p": tts.get("top_p", 0.7)}}))
             box["ws"] = ws
         except Exception as e:
             print("fish ws error", e, flush=True)
@@ -158,8 +208,9 @@ def run_job(job, npc, history, text):
         ws.send(msgpack.packb({"event": "flush"}))
         ws.send(msgpack.packb({"event": "stop"}))
 
-    threading.Thread(target=open_ws, daemon=True).start()
-    threading.Thread(target=send, daemon=True).start()
+    if job.stream:  # full lines go over REST instead, it acts noticeably better
+        threading.Thread(target=open_ws, daemon=True).start()
+        threading.Thread(target=send, daemon=True).start()
 
     # LLM replies as "mood|[direction] line", words go to Fish the moment they arrive
     history = HISTORY.setdefault(npc["id"], [])
@@ -189,13 +240,13 @@ def run_job(job, npc, history, text):
         if job.stream:
             text_q.put(head)
     if not job.line.strip():
-        job.line = "[confused, squinting] Huh? Say that again."
+        job.line = "[confused, drawn out] Huh? Say that again."
         if job.stream:
             text_q.put(job.line)
-    if not job.stream:
-        text_q.put(job.line)
     text_q.put(None)
     job.line = job.line.strip()
+    if not job.stream:
+        threading.Thread(target=speak_rest, args=(job, npc, job.line), daemon=True).start()
     job.mark("llm_done")
     history += [{"role": "user", "content": text}, {"role": "assistant", "content": f"{job.mood}|{job.line}"}]
     STREET.append({"npc": npc["id"], "name": npc["name"], "you": text, "them": plain(job.line)})
@@ -209,12 +260,33 @@ def talk(t: Talk):
     if not npc:
         raise HTTPException(404, "no such npc")
     job = Job(t.fish_model if t.fish_model in FISH_MODELS else "drama-3", t.stream_text)
+    job.npc = npc
+    jid = add_job(job)
+    threading.Thread(target=run_job, args=(job, npc, t.history, t.text), daemon=True).start()
+    return {"id": jid, "model": job.model}
+
+
+@app.post("/api/retake/{jid}")
+def retake(jid: str):
+    # same line, fresh take from Fish, every take comes out a bit different
+    old = JOBS.get(jid)
+    if not old or not old.done.is_set():
+        raise HTTPException(404, "no finished line to retake")
+    job = Job(old.model, False)
+    job.npc, job.line, job.mood = old.npc, old.line, old.mood
+    job.done.set()
+    new = add_job(job)
+    threading.Thread(target=speak_rest, args=(job, job.npc, job.line), daemon=True).start()
+    print(f"[{job.npc['name']}] retake | {job.line}", flush=True)
+    return {"id": new, "model": job.model}
+
+
+def add_job(job):
     jid = uuid.uuid4().hex
     JOBS[jid] = job
     for old in list(JOBS)[:-30]:
         JOBS.pop(old, None)
-    threading.Thread(target=run_job, args=(job, npc, t.history, t.text), daemon=True).start()
-    return {"id": jid, "model": job.model}
+    return jid
 
 
 @app.get("/api/speak/{jid}")

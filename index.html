@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Neon Bay</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌴</text></svg>">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -35,7 +36,7 @@
 <body>
 <div id="load">Loading Neon Bay...</div>
 <div id="logo">NEON BAY</div>
-<div id="help"><b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>C</b> walk &nbsp; <b>drag</b> look<br><b>Hold T</b> talk with voice &nbsp; <b>Enter</b> type<br><b>M</b> swap voice model &nbsp; <b>B</b> swap ears &nbsp; <b>H</b> hands-free &nbsp; <b>L</b> full/streamed lines<br><b>R</b> wipe street memory<br>voices by <a href="https://fish.audio/invite/?fpr=henryk" target="_blank" style="color:#ffd400">Fish Audio Drama 3</a></div>
+<div id="help"><b>W A S D</b> move &nbsp; <b>Shift</b> sprint &nbsp; <b>C</b> walk &nbsp; <b>drag</b> look<br><b>Hold T</b> talk with voice &nbsp; <b>Enter</b> type<br><b>M</b> swap voice model &nbsp; <b>B</b> swap ears &nbsp; <b>H</b> hands-free &nbsp; <b>L</b> full/streamed lines<br><b>R</b> wipe street memory &nbsp; <b>Y</b> retake last line<br>voices by <a href="https://fish.audio/invite/?fpr=henryk" target="_blank" style="color:#ffd400">Fish Audio Drama 3</a></div>
 <div id="model">VOICE: <span id="modelName">DRAMA 3</span> &nbsp; EARS: <span id="earsName">BROWSER</span> &nbsp; HANDS-FREE: <span id="hfName">OFF</span> &nbsp; LINES: <span id="lineName">FULL</span></div>
 <div id="prompt"></div>
 <div id="sub"></div>
@@ -332,6 +333,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyL') toggleLines();
   if (e.code === 'KeyB') toggleEars();
   if (e.code === 'KeyH') toggleHandsFree();
+  if (e.code === 'KeyY' && !e.repeat && last && !last.npc.busy) say(last.npc, '', last.id);
   if (e.code === 'KeyR') fetch('/api/reset', { method: 'POST' }).then(() => showSub('<span class="me">Street memory wiped, everyone forgot you</span>'));
 });
 addEventListener('keyup', e => { keys[e.code] = false; if (e.code === 'KeyT') stopListening(); });
@@ -475,17 +477,19 @@ function fmtLine(name, line) {
   const body = esc(line).replace(/\[([^\]]+)\]/g, '<span class="dir">[$1]</span>').replace(/&lt;\/?(whisper|emphasis|stress|forceful|soft|fast|slow)&gt;/g, '');
   return `<span class="who">${esc(name.toUpperCase())}:</span> ${body}`;
 }
-let audio = null;
-async function say(npc, text) {
+let audio = null, last = null;  // last line spoken, Y re-voices it
+async function say(npc, text, retakeOf) {
   npc.busy = true;
-  npc.tag.querySelector('.st').textContent = 'thinking...';
-  showSub(`<span class="me">YOU: ${esc(text)}</span>`);
+  npc.tag.querySelector('.st').textContent = retakeOf ? 'retake...' : 'thinking...';
+  if (!retakeOf) showSub(`<span class="me">YOU: ${esc(text)}</span>`);
   const t0 = performance.now();
   try {
-    const r = await fetch('/api/talk', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ npc: npc.id, text, fish_model: fishModel, stream_text: streamText }) });
+    const r = retakeOf ? await fetch(`/api/retake/${retakeOf}`, { method: 'POST' })
+      : await fetch('/api/talk', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ npc: npc.id, text, fish_model: fishModel, stream_text: streamText }) });
     if (!r.ok) throw new Error(await r.text());
     const { id, model } = await r.json();
+    last = { npc, id };
     // audio streams in while the LLM is still writing, the full line arrives separately for subtitles
     if (audio) audio.pause();
     audio = new Audio(`/api/speak/${id}`);
